@@ -30,7 +30,7 @@ Performs a numerical integration of some integrand function `f` over the domain 
 ```julia
 integral(f, geometry, rule)
 ```
-Performs a numerical integration of some integrand function `f` over the domain specified by `geometry` using the specified integration rule, e.g. `GaussKronrod()`. The integrand function can be anything callable with a method `f(::Meshes.Point)`.  
+Performs a numerical integration of some integrand function `f` over the domain specified by `geometry` using the specified integration rule, e.g. `GaussKronrod()`. The integrand function can be anything callable with a method `f(::Meshes.Point)`.
 
 Additionally, several optional keyword arguments are defined in [the API](https://juliageometry.github.io/MeshIntegrals.jl/stable/api/) to provide additional control over the integration mechanics.
 
@@ -46,24 +46,30 @@ Alias functions are provided for convenience. These are simply wrappers for `int
 - `surfaceintegral` is used for surfaces (e.g. `Disk`, `Sphere`, `CylinderSurface`, etc)
 - `volumeintegral` is used for (3D) volumes (e.g. `Ball`, `Cone`, `Torus`, etc)
 
-# Demo
+### Example
 
 ```julia
 using Meshes
 using MeshIntegrals
 using Unitful
 
-# Define a path that approximates a sine-wave on the xy-plane
-mypath = BezierCurve(
-    [Point(t*u"m", sin(t)*u"m", 0.0u"m") for t in range(-pi, pi, length=361)]
-)
+# Define a Bezier curve whose path approximates a sine-wave on the xy-plane
+N = 361
+curve = BezierCurve([Point(t*u"m", sin(t)*u"m", 0.0u"m") for t in range(-π, π, length=N)])
 
-# Map f(::Point) -> f(x, y, z) in unitless coordinates
-f(p::Meshes.Point) = f(ustrip(to(p))...)
+# Integrand function that outputs in units of Ohms/meter
+function f(p::Point)
+    x, y, z = to(p)
+    return (1 / sqrt(1 + cos(x / u"m")^2)) * u"Ω/m"
+end
 
-# Integrand function in units of Ohms/meter
-f(x, y, z) = (1 / sqrt(1 + cos(x)^2)) * u"Ω/m"
+# Use recommended defaults
+integral(f, curve) # -> Approximately 2π Ω
 
-integral(f, mypath)
-# -> Approximately 2*Pi Ω
+# Using aliases
+lineintegral(f, curve) # -> Approximately 2π Ω
+surfaceintegral(f, curve) # -> throws ArgumentError
+
+# Specifying an integration rule and settings (loosened absolute tolerance)
+integral(f, curve, GaussKronrod(atol = 1e-4u"Ω")) # -> Approximately (2π ± 1e-4) Ω
 ```
